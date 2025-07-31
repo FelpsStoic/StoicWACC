@@ -1,9 +1,10 @@
-# app.py - Versão Final com Logo da Empresa
+# app.py - Versão Final com Tratamento de Erro de Conexão
 
 import streamlit as st
 import pandas as pd
 import warnings
 from datetime import date
+from urllib.error import URLError # Importa o erro específico de rede
 
 # Ignorar avisos que podem poluir a saída
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -70,9 +71,22 @@ def get_risk_free_rate():
         
         return risk_free_rate, rf_info, data_mais_recente
         
-    except Exception as e:
-        st.error(f"Erro ao carregar Taxa Livre de Risco: {e}")
+    # --- NOVO BLOCO DE TRATAMENTO DE ERRO ---
+    except URLError:
+        # Erro específico para problemas de conexão de rede
+        st.error(
+            "**Dados do Tesouro Direto temporariamente indisponíveis.** "
+            "O servidor do governo não respondeu. Por favor, tente novamente mais tarde.",
+            icon="📡"
+        )
         return None, None, None
+        
+    except Exception as e:
+        # Erro para outras falhas (ex: mudança no formato do arquivo)
+        st.error(f"Ocorreu um erro inesperado ao processar os dados do Tesouro: {e}", icon="⚠️")
+        return None, None, None
+
+# --- O RESTANTE DO CÓDIGO PERMANECE IGUAL ---
 
 # --- CARREGANDO DADOS ---
 with st.spinner('Carregando dados de mercado... Por favor, aguarde.'):
@@ -84,14 +98,13 @@ with st.spinner('Carregando dados de mercado... Por favor, aguarde.'):
 col1, col2 = st.columns([1, 4])
 with col1:
     try:
-        st.image("assets/logo.png", width=100) # Ajuste o 'width' conforme necessário
+        st.image("assets/logo.png", width=100)
     except FileNotFoundError:
-        st.write("") # Não mostra nada se o logo não for encontrado
+        st.write("")
 with col2:
     st.title("Calculadora de WACC")
     st.markdown("Ferramenta para calcular o Custo Médio Ponderado de Capital (WACC).")
 st.markdown("---")
-
 
 # Verifica se os dados essenciais foram carregados
 if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
@@ -112,7 +125,7 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
         cost_of_debt_pct = st.number_input(
             "Custo da Dívida (Kd) (%)",
             min_value=0.0,
-            value=8.80, # Valor padrão
+            value=8.80,
             step=0.10,
             format="%.2f"
         )
@@ -123,7 +136,7 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
             "Proporção de Dívida (D/V) (%)",
             min_value=0.0,
             max_value=100.0,
-            value=30.0, # Valor padrão
+            value=30.0,
             step=1.0,
             format="%.1f"
         )
@@ -133,7 +146,7 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
             "Alíquota de Imposto (t) (%)",
             min_value=0.0,
             max_value=100.0,
-            value=34.0, # Padrão solicitado pelo usuário
+            value=34.0,
             step=1.0,
             format="%.1f"
         )
@@ -201,4 +214,5 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
         st.latex(f"\\text{{WACC}} = ({equity_ratio:.0%} \\times {cost_of_equity:.2%}) + ({debt_ratio:.0%} \\times {cost_of_debt:.2%} \\times (1 - {tax_rate:.0%})) = \\textbf{{{wacc:.2%}}}")
 
 else:
-    st.error("❌ A aplicação não pôde ser iniciada. Verifique se as fontes de dados (Damodaran, Tesouro Direto) estão online e tente recarregar a página.")
+    # Mensagem exibida se algum dos dados essenciais não for carregado
+    st.warning("A aplicação não pode continuar pois um ou mais dados de mercado não foram carregados. Verifique as mensagens de erro acima.")
