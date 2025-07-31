@@ -1,4 +1,4 @@
-# app.py - Versão Revertida para a fonte de dados do Tesouro Direto
+# app.py - Versão Final com Descrições Detalhadas na Tabela
 
 import streamlit as st
 import pandas as pd
@@ -45,7 +45,6 @@ def get_brazil_risk_premiums():
         st.error(f"Erro ao carregar Prêmio de Risco: {e}")
         return None
 
-# --- FUNÇÃO get_risk_free_rate REVERTIDA PARA A VERSÃO DO TESOURO DIRETO ---
 @st.cache_data
 def get_risk_free_rate():
     """
@@ -158,7 +157,7 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
     res_col2.metric("Custo da Dívida (após impostos)", f"{cost_of_debt * (1 - tax_rate):.2%}")
     res_col3.metric("WACC", f"{wacc:.2%}")
     
-    # --- TABELA PARA COPIAR COM FONTES ---
+    # --- TABELA PARA COPIAR COM DESCRIÇÕES ---
     with st.expander("📋 Tabela para Copiar e Colar (Excel, Google Sheets)"):
         summary_data = {
             "Métrica": [
@@ -191,20 +190,21 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
                 f"{cost_of_equity:.2%}",
                 f"{wacc:.2%}"
             ],
-            "Fonte": [
-                "Automático",
-                "Automático",
-                "Tesouro Transparente",
-                "Damodaran Online",
-                "Input do Usuário",
-                "Damodaran Online",
-                "Input do Usuário",
-                "Cálculo Interno",
-                "Input do Usuário",
-                "Input do Usuário",
-                "Input do Usuário",
-                "Cálculo Interno",
-                "Cálculo Interno"
+            # NOVA COLUNA: DESCRIÇÃO
+            "Descrição": [
+                "Data em que a análise foi realizada.",
+                "Data de referência para os dados de mercado (taxa livre de risco).",
+                "Taxa do Tesouro Prefixado com Juros Semestrais de maior vencimento. Fonte: Tesouro Transparente.",
+                "Prêmio adicional exigido por investidores no Brasil. Fonte: Damodaran Online.",
+                "Setor de atuação da empresa, selecionado pelo usuário para definir o Beta.",
+                "Risco sistemático do setor (não alavancado). Fonte: Damodaran Online.",
+                "Prêmio adicional pelo risco de empresas menores. Inserido pelo usuário.",
+                "Percentual de capital próprio na estrutura de capital. Calculado a partir da dívida.",
+                "Percentual de dívida na estrutura de capital. Inserido pelo usuário.",
+                "Custo da dívida da empresa antes do benefício fiscal. Inserido pelo usuário.",
+                "Alíquota de imposto para o benefício fiscal da dívida. Inserido pelo usuário.",
+                "Retorno exigido pelos acionistas. Calculado via modelo CAPM estendido.",
+                "Custo Médio Ponderado de Capital da empresa. Resultado final do cálculo."
             ]
         }
         summary_df = pd.DataFrame(summary_data)
