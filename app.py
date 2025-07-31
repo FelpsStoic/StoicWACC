@@ -1,4 +1,4 @@
-# app.py
+# app.py - Versão Consolidada Final
 
 import streamlit as st
 import pandas as pd
@@ -47,22 +47,45 @@ def get_brazil_risk_premiums():
 
 @st.cache_data
 def get_risk_free_rate():
-    """Busca a Taxa Livre de Risco (prefixado mais longo) do Tesouro Direto."""
+    """
+    Busca a Taxa Livre de Risco usando o Tesouro Prefixado com Juros Semestrais
+    de vencimento mais longo, para a data mais recente disponível na base.
+    """
     try:
         url = 'https://www.tesourotransparente.gov.br/ckan/dataset/df56aa42-484a-4a59-8184-7676580c81e3/resource/796d2059-14e9-44e3-80c9-2d9e30b405c1/download/precotaxatesourodireto.csv'
         df = pd.read_csv(url, sep=';', decimal=',')
+
+        # 1. Converter as colunas de data e taxa para os tipos corretos
+        df['Data Base'] = pd.to_datetime(df['Data Base'], dayfirst=True)
         df['Data Vencimento'] = pd.to_datetime(df['Data Vencimento'], dayfirst=True)
         df['Taxa Compra Manha'] = pd.to_numeric(df['Taxa Compra Manha'])
-        df_prefixados = df[df['Tipo Titulo'].str.contains('Prefixado', na=False)]
-        df_prefixados_longos = df_prefixados.sort_values(by='Data Vencimento', ascending=False)
+
+        # 2. Encontrar a data mais recente na base de dados
+        data_mais_recente = df['Data Base'].max()
         
-        if df_prefixados_longos.empty:
-            st.warning("Nenhum título prefixado encontrado.")
-            return None
+        # 3. Filtrar o DataFrame para conter apenas os dados da data mais recente
+        df_recente = df[df['Data Base'] == data_mais_recente].copy()
+
+        # 4. Filtrar pelo tipo de título exato: "Tesouro Prefixado com Juros Semestrais"
+        df_filtrado = df_recente[df_recente['Tipo Titulo'] == 'Tesouro Prefixado com Juros Semestrais']
+        
+        # 5. Ordenar os títulos filtrados pelo vencimento mais longo
+        df_final = df_filtrado.sort_values(by='Data Vencimento', ascending=False)
+        
+        if df_final.empty:
+            st.warning("Aviso: Nenhum título 'Tesouro Prefixado com Juros Semestrais' encontrado para a data mais recente. Verifique a fonte de dados.")
+            return None # Retorna None se não encontrar o título específico
             
-        # CORREÇÃO: Dividir por 100 para usar a taxa em formato decimal
-        risk_free_rate = df_prefixados_longos['Taxa Compra Manha'].iloc[0] / 100
+        # Pega a taxa do título mais longo e converte para decimal
+        risk_free_rate = df_final['Taxa Compra Manha'].iloc[0] / 100
+        
+        # Adiciona uma mensagem de sucesso no sidebar para informar o usuário
+        titulo_usado = df_final['Tipo Titulo'].iloc[0]
+        vencimento_usado = df_final['Data Vencimento'].iloc[0].strftime('%d/%m/%Y')
+        st.sidebar.success(f"Rf de {risk_free_rate:.2%} (Tesouro {vencimento_usado}) usada no cálculo.")
+        
         return risk_free_rate
+        
     except Exception as e:
         st.error(f"Erro ao carregar Taxa Livre de Risco: {e}")
         return None
@@ -132,13 +155,12 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
     # Detalhamento dos cálculos em um "expander"
     with st.expander("Clique para ver o detalhamento do cálculo"):
         st.subheader("Parâmetros de Mercado")
-        st.markdown(f"- **Taxa Livre de Risco (Rf):** `{rf_rate:.2%}`")
         st.markdown(f"- **Prêmio de Risco de Mercado (ERP Brasil):** `{erp_brazil:.2%}`")
         st.markdown(f"- **Beta (β) do Setor '{selected_industry}':** `{beta:.4f}`")
 
         st.subheader("Cálculo do Custo de Equity (Re)")
         st.latex(r'''R_e = R_f + \beta \times ERP''')
-        st.latex(f"R_e = {rf_rate:.2%} + {beta:.4f} \times {erp_brazil:.2%} = \\textbf{{{cost_of_equity:.2%}}}")
+        st.latex(f"R_e = {rf_rate:.2%} + {beta:.4f} \\times {erp_brazil:.2%} = \\textbf{{{cost_of_equity:.2%}}}")
         
         st.subheader("Cálculo do WACC")
         st.latex(r'''\text{WACC} = \left( \frac{E}{V} \times R_e \right) + \left( \frac{D}{V} \times R_d \times (1 - t) \right)''')
