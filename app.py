@@ -1,8 +1,9 @@
-# app.py - Versão com Layout Melhorado e Tabela para Copiar
+# app.py - Versão com Layout Melhorado e Tabela com Datas
 
 import streamlit as st
 import pandas as pd
 import warnings
+from datetime import date # Importa a classe 'date'
 
 # Ignorar avisos que podem poluir a saída
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -11,11 +12,10 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 st.set_page_config(
     page_title="Calculadora de WACC",
     page_icon="📊",
-    layout="centered" # Mantém o layout base centralizado
+    layout="centered"
 )
 
 # --- FUNÇÕES DE BUSCA DE DADOS (COM CACHE) ---
-# O decorator @st.cache_data garante que os dados sejam baixados apenas uma vez.
 @st.cache_data
 def get_beta_data():
     """Busca a tabela de Betas por setor do site do Damodaran."""
@@ -47,7 +47,7 @@ def get_brazil_risk_premiums():
 @st.cache_data
 def get_risk_free_rate():
     """
-    Busca a Taxa Livre de Risco usando o Tesouro Prefixado com Juros Semestrais
+    Busca a Taxa Livre de Risco e a data-base do Tesouro Prefixado com Juros Semestrais
     de vencimento mais longo, para a data mais recente disponível na base.
     """
     try:
@@ -63,22 +63,24 @@ def get_risk_free_rate():
         
         if df_final.empty:
             st.warning("Aviso: Nenhum título 'Tesouro Prefixado com Juros Semestrais' encontrado.")
-            return None, None
+            return None, None, None
             
         risk_free_rate = df_final['Taxa Compra Manha'].iloc[0] / 100
         rf_info = f"Rf de {risk_free_rate:.2%} (Tesouro {df_final['Data Vencimento'].iloc[0].strftime('%d/%m/%Y')})"
         
-        return risk_free_rate, rf_info
+        # ATUALIZAÇÃO: Retorna a data-base junto com os outros dados
+        return risk_free_rate, rf_info, data_mais_recente
         
     except Exception as e:
         st.error(f"Erro ao carregar Taxa Livre de Risco: {e}")
-        return None, None
+        return None, None, None
 
 # --- CARREGANDO DADOS ---
 with st.spinner('Carregando dados de mercado... Por favor, aguarde.'):
     df_betas = get_beta_data()
     erp_brazil = get_brazil_risk_premiums()
-    rf_rate, rf_info_str = get_risk_free_rate()
+    # ATUALIZAÇÃO: Recebe a data_base retornada pela função
+    rf_rate, rf_info_str, data_base_rf = get_risk_free_rate()
 
 # --- TÍTULO E DESCRIÇÃO ---
 st.title("📊 Calculadora de WACC")
@@ -88,10 +90,10 @@ st.markdown("---")
 # Verifica se os dados essenciais foram carregados
 if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
     
-    # --- NOVA SEÇÃO DE INPUTS CENTRALIZADA ---
+    # --- SEÇÃO DE INPUTS CENTRALIZADA ---
     st.subheader("1. Insira os Parâmetros da Empresa")
     
-    col1, col2 = st.columns(2) # Cria duas colunas para organizar os inputs
+    col1, col2 = st.columns(2)
 
     with col1:
         industry_list = sorted(df_betas['Industry Name'].unique())
@@ -132,11 +134,12 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
     res_col2.metric("Custo da Dívida (após impostos)", f"{cost_of_debt * (1 - tax_rate):.2%}")
     res_col3.metric("WACC", f"{wacc:.2%}")
     
-    # --- NOVA SEÇÃO COM TABELA PARA COPIAR ---
+    # --- TABELA PARA COPIAR COM DATAS ---
     with st.expander("📋 Tabela para Copiar e Colar (Excel, Google Sheets)"):
-        # Cria um dicionário com os dados
         summary_data = {
             "Métrica": [
+                "Data do Cálculo",
+                "Data Base (Taxa Livre de Risco)",
                 "Taxa Livre de Risco (Rf)",
                 "Prêmio de Risco de Mercado (ERP)",
                 "Setor Selecionado",
@@ -149,6 +152,8 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
                 "WACC"
             ],
             "Valor": [
+                date.today().strftime('%d/%m/%Y'),
+                data_base_rf.strftime('%d/%m/%Y'),
                 f"{rf_rate:.2%}",
                 f"{erp_brazil:.2%}",
                 selected_industry,
@@ -162,10 +167,9 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
             ]
         }
         summary_df = pd.DataFrame(summary_data)
-        # Usa st.dataframe para uma tabela interativa e fácil de copiar
         st.dataframe(summary_df, hide_index=True, use_container_width=True)
 
-    # --- SEÇÃO COM DETALHAMENTO DAS FÓRMULAS ---
+    # --- DETALHAMENTO DAS FÓRMULAS ---
     with st.expander("🔎 Detalhamento das Fórmulas"):
         st.info(rf_info_str, icon="📄")
         st.subheader("Cálculo do Custo de Equity (Re)")
@@ -174,7 +178,7 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
         
         st.subheader("Cálculo do WACC")
         st.latex(r'''\text{WACC} = \left( \frac{E}{V} \times R_e \right) + \left( \frac{D}{V} \times R_d \times (1 - t) \right)''')
-        st.latex(f"\\text{{WACC}} = ({equity_ratio:.0%} \\times {cost_of_equity:.2%}) + ({debt_rio:.0%} \\times {cost_of_debt:.2%} \\times (1 - {tax_rate:.0%})) = \\textbf{{{wacc:.2%}}}")
+        st.latex(f"\\text{{WACC}} = ({equity_ratio:.0%} \\times {cost_of_equity:.2%}) + ({debt_ratio:.0%} \\times {cost_of_debt:.2%} \\times (1 - {tax_rate:.0%})) = \\textbf{{{wacc:.2%}}}")
 
 else:
     st.error("❌ A aplicação não pôde ser iniciada. Verifique se as fontes de dados (Damodaran, Tesouro Direto) estão online e tente recarregar a página.")
