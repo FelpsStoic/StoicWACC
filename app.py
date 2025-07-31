@@ -1,9 +1,9 @@
-# app.py - Versão com Layout Melhorado e Tabela com Datas
+# app.py - Versão com Inputs de Digitação e Padrão de Imposto Atualizado
 
 import streamlit as st
 import pandas as pd
 import warnings
-from datetime import date # Importa a classe 'date'
+from datetime import date
 
 # Ignorar avisos que podem poluir a saída
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -68,7 +68,6 @@ def get_risk_free_rate():
         risk_free_rate = df_final['Taxa Compra Manha'].iloc[0] / 100
         rf_info = f"Rf de {risk_free_rate:.2%} (Tesouro {df_final['Data Vencimento'].iloc[0].strftime('%d/%m/%Y')})"
         
-        # ATUALIZAÇÃO: Retorna a data-base junto com os outros dados
         return risk_free_rate, rf_info, data_mais_recente
         
     except Exception as e:
@@ -79,7 +78,6 @@ def get_risk_free_rate():
 with st.spinner('Carregando dados de mercado... Por favor, aguarde.'):
     df_betas = get_beta_data()
     erp_brazil = get_brazil_risk_premiums()
-    # ATUALIZAÇÃO: Recebe a data_base retornada pela função
     rf_rate, rf_info_str, data_base_rf = get_risk_free_rate()
 
 # --- TÍTULO E DESCRIÇÃO ---
@@ -90,7 +88,7 @@ st.markdown("---")
 # Verifica se os dados essenciais foram carregados
 if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
     
-    # --- SEÇÃO DE INPUTS CENTRALIZADA ---
+    # --- SEÇÃO DE INPUTS COM CAMPOS DE DIGITAÇÃO ---
     st.subheader("1. Insira os Parâmetros da Empresa")
     
     col1, col2 = st.columns(2)
@@ -103,21 +101,38 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
             key="sector_selectbox"
         )
         
-        cost_of_debt = st.slider(
-            "Custo da Dívida (Kd):",
-            min_value=0.0, max_value=0.30, value=0.088, step=0.005, format="%.2f%%"
+        # MUDANÇA: de slider para number_input
+        cost_of_debt_pct = st.number_input(
+            "Custo da Dívida (Kd) (%)",
+            min_value=0.0,
+            value=8.80, # Valor padrão
+            step=0.10,
+            format="%.2f"
         )
+        cost_of_debt = cost_of_debt_pct / 100.0
 
     with col2:
-        debt_ratio = st.slider(
-            "Proporção de Dívida (D/V):",
-            min_value=0.0, max_value=1.0, value=0.30, step=0.01, format="%.0f%%"
+        # MUDANÇA: de slider para number_input
+        debt_ratio_pct = st.number_input(
+            "Proporção de Dívida (D/V) (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=30.0, # Valor padrão
+            step=1.0,
+            format="%.1f"
         )
+        debt_ratio = debt_ratio_pct / 100.0
         
-        tax_rate = st.slider(
-            "Alíquota de Imposto (t):",
-            min_value=0.0, max_value=0.50, value=0.34, step=0.01, format="%.0f%%"
+        # MUDANÇA: de slider para number_input e padrão para 34%
+        tax_rate_pct = st.number_input(
+            "Alíquota de Imposto (t) (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=34.0, # Padrão solicitado pelo usuário
+            step=1.0,
+            format="%.1f"
         )
+        tax_rate = tax_rate_pct / 100.0
 
     # --- CÁLCULOS ---
     equity_ratio = 1 - debt_ratio
@@ -134,7 +149,7 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
     res_col2.metric("Custo da Dívida (após impostos)", f"{cost_of_debt * (1 - tax_rate):.2%}")
     res_col3.metric("WACC", f"{wacc:.2%}")
     
-    # --- TABELA PARA COPIAR COM DATAS ---
+    # --- TABELA PARA COPIAR ---
     with st.expander("📋 Tabela para Copiar e Colar (Excel, Google Sheets)"):
         summary_data = {
             "Métrica": [
