@@ -1,10 +1,11 @@
-# app.py - Versão Final com Prêmio de Tamanho e Fontes de Dados
+# app.py - Versão Final com pyettj para Taxa Livre de Risco
 
 import streamlit as st
 import pandas as pd
 import warnings
-from datetime import date
+from datetime import date, datetime, timedelta
 from urllib.error import URLError
+from pyettj.ettj import get_ettj # NOVA IMPORTAÇÃO
 
 # Ignorar avisos que podem poluir a saída
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -45,43 +46,68 @@ def get_brazil_risk_premiums():
         st.error(f"Erro ao carregar Prêmio de Risco: {e}")
         return None
 
+# --- NOVA FUNÇÃO get_risk_free_rate USANDO pyettj ---
 @st.cache_data
 def get_risk_free_rate():
     """
-    Busca a Taxa Livre de Risco e a data-base do Tesouro Prefixado com Juros Semestrais
-    de vencimento mais longo, para a data mais recente disponível na base.
+    Busca a Taxa Livre de Risco usando a biblioteca pyettj para a curva prefixada.
+    Busca o vértice mais próximo de 10 anos (2520 dias úteis).
     """
-    try:
-        url = 'https://www.tesourotransparente.gov.br/ckan/dataset/df56aa42-484a-4a59-8184-7676580c81e3/resource/796d2059-14e9-44e3-80c9-2d9e30b405c1/download/precotaxatesourodireto.csv'
-        df = pd.read_csv(url, sep=';', decimal=',')
-        df['Data Base'] = pd.to_datetime(df['Data Base'], dayfirst=True)
-        df['Data Vencimento'] = pd.to_datetime(df['Data Vencimento'], dayfirst=True)
-        df['Taxa Compra Manha'] = pd.to_numeric(df['Taxa Compra Manha'])
-        data_mais_recente = df['Data Base'].max()
-        df_recente = df[df['Data Base'] == data_mais_recente].copy()
-        df_filtrado = df_recente[df_recente['Tipo Titulo'] == 'Tesouro Prefixado com Juros Semestrais']
-        df_final = df_filtrado.sort_values(by='Data Vencimento', ascending=False)
-        
-        if df_final.empty:
-            st.warning("Aviso: Nenhum título 'Tesouro Prefixado com Juros Semestrais' encontrado.")
+    dias_uteis_desejado = 2520  # Proxy para 10 anos
+    data_consulta = datetime.today()
+    ettj_df = None
+    data_sucesso = None
+
+    # Loop para encontrar o último dia com dados disponíveis (tenta os últimos 10 dias)
+    for _ in range(10):
+        try:
+            data_str = data_consulta.strftime('%d/%m/%Y')
+            ettj_df = get_ettj(data_str, curva='PRE')
+            if not ettj_df.empty:
+                data_sucesso = data_consulta
+                break  # Para o loop se encontrar dados
+        except Exception:
+            pass  # Se der erro, tenta o dia anterior silenciosamente
+        finally:
+            data_consulta -= timedelta(days=1)
+    
+    # Se encontrou dados, processa
+    if ettj_df is not None and not ettj_df.empty:
+        try:
+            coluna_prazo = 'Dias Corridos'
+            coluna_taxa = 'DI x pré 252(2)(4)'
+            
+            ettj_df[coluna_prazo] = pd.to_numeric(ettj_df[coluna_prazo])
+            
+            # Estima o prazo em dias corridos
+            dias_corridos_estimado = dias_uteis_desejado * (365 / 252)
+            
+            # Encontra o vértice mais próximo do prazo desejado
+            indice_vertice_proximo = (ettj_df[coluna_prazo] - dias_corridos_estimado).abs().idxmin()
+            vertice_encontrado = ettj_df.loc[indice_vertice_proximo]
+            
+            # Extrai os valores
+            prazo_encontrado = int(vertice_encontrado[coluna_prazo])
+            taxa_encontrada_pct = vertice_encontrado[coluna_taxa]
+            
+            # Converte a taxa para decimal para uso nos cálculos
+            risk_free_rate = taxa_encontrada_pct / 100.0
+            
+            # Cria a string de informação para o usuário
+            rf_info = f"Rf de {risk_free_rate:.2%} (Vértice PRE B3 de {prazo_encontrado} dias)"
+            
+            return risk_free_rate, rf_info, data_sucesso
+
+        except Exception as e:
+            st.error(f"Erro ao processar os dados da curva de juros da B3: {e}")
             return None, None, None
             
-        risk_free_rate = df_final['Taxa Compra Manha'].iloc[0] / 100
-        rf_info = f"Rf de {risk_free_rate:.2%} (Tesouro {df_final['Data Vencimento'].iloc[0].strftime('%d/%m/%Y')})"
-        
-        return risk_free_rate, rf_info, data_mais_recente
-        
-    except URLError:
-        st.error(
-            "**Dados do Tesouro Direto temporariamente indisponíveis.** "
-            "O servidor do governo não respondeu. Por favor, tente novamente mais tarde.",
-            icon="📡"
-        )
+    # Se o loop terminar sem dados
+    else:
+        st.error("Não foi possível obter os dados da curva de juros da B3 para os últimos 10 dias.")
         return None, None, None
-        
-    except Exception as e:
-        st.error(f"Ocorreu um erro inesperado ao processar os dados do Tesouro: {e}", icon="⚠️")
-        return None, None, None
+
+# --- O RESTANTE DO CÓDIGO PERMANECE IGUAL ---
 
 # --- CARREGANDO DADOS ---
 with st.spinner('Carregando dados de mercado... Por favor, aguarde.'):
@@ -100,7 +126,6 @@ with col2:
     st.title("Calculadora de WACC")
     st.markdown("Ferramenta para calcular o Custo Médio Ponderado de Capital (WACC).")
 st.markdown("---")
-
 
 # Verifica se os dados essenciais foram carregados
 if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
@@ -137,18 +162,15 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
         tax_rate = tax_rate_pct / 100.0
 
     with col_input3:
-        # NOVO INPUT: PRÊMIO DE TAMANHO
         size_premium_pct = st.number_input(
             "Prêmio de Tamanho (%)",
             min_value=0.0, value=0.0, step=0.1, format="%.2f"
         )
         size_premium = size_premium_pct / 100.0
 
-
     # --- CÁLCULOS ATUALIZADOS ---
     equity_ratio = 1 - debt_ratio
     beta = df_betas[df_betas['Industry Name'] == selected_industry]['Beta'].iloc[0]
-    # CÁLCULO ATUALIZADO: Inclusão do Prêmio de Tamanho no Custo de Equity
     cost_of_equity = rf_rate + beta * erp_brazil + size_premium
     wacc = (equity_ratio * cost_of_equity) + (debt_ratio * cost_of_debt * (1 - tax_rate))
 
@@ -194,11 +216,10 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
                 f"{cost_of_equity:.2%}",
                 f"{wacc:.2%}"
             ],
-            # NOVA COLUNA: FONTES
             "Fonte": [
                 "Automático",
                 "Automático",
-                "Tesouro Transparente",
+                "B3 (via pyettj)",
                 "Damodaran Online",
                 "Input do Usuário",
                 "Damodaran Online",
@@ -226,5 +247,4 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
         st.latex(f"\\text{{WACC}} = ({equity_ratio:.0%} \\times {cost_of_equity:.2%}) + ({debt_ratio:.0%} \\times {cost_of_debt:.2%} \\times (1 - {tax_rate:.0%})) = \\textbf{{{wacc:.2%}}}")
 
 else:
-    # Mensagem exibida se algum dos dados essenciais não for carregado
     st.warning("A aplicação não pode continuar pois um ou mais dados de mercado não foram carregados. Verifique as mensagens de erro acima.")
