@@ -1,4 +1,4 @@
-# app.py - Versão com Inputs de Digitação e Padrão de Imposto Atualizado
+# app.py - Versão Final com Logo da Empresa
 
 import streamlit as st
 import pandas as pd
@@ -80,10 +80,18 @@ with st.spinner('Carregando dados de mercado... Por favor, aguarde.'):
     erp_brazil = get_brazil_risk_premiums()
     rf_rate, rf_info_str, data_base_rf = get_risk_free_rate()
 
-# --- TÍTULO E DESCRIÇÃO ---
-st.title("📊 Calculadora de WACC")
-st.markdown("Ferramenta para calcular o Custo Médio Ponderado de Capital (WACC) de uma empresa.")
+# --- TÍTULO E DESCRIÇÃO COM LOGO ---
+col1, col2 = st.columns([1, 4])
+with col1:
+    try:
+        st.image("assets/logo.png", width=100) # Ajuste o 'width' conforme necessário
+    except FileNotFoundError:
+        st.write("") # Não mostra nada se o logo não for encontrado
+with col2:
+    st.title("Calculadora de WACC")
+    st.markdown("Ferramenta para calcular o Custo Médio Ponderado de Capital (WACC).")
 st.markdown("---")
+
 
 # Verifica se os dados essenciais foram carregados
 if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
@@ -91,9 +99,9 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
     # --- SEÇÃO DE INPUTS COM CAMPOS DE DIGITAÇÃO ---
     st.subheader("1. Insira os Parâmetros da Empresa")
     
-    col1, col2 = st.columns(2)
+    col_input1, col_input2 = st.columns(2)
 
-    with col1:
+    with col_input1:
         industry_list = sorted(df_betas['Industry Name'].unique())
         selected_industry = st.selectbox(
             "Selecione o Setor:",
@@ -101,7 +109,6 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
             key="sector_selectbox"
         )
         
-        # MUDANÇA: de slider para number_input
         cost_of_debt_pct = st.number_input(
             "Custo da Dívida (Kd) (%)",
             min_value=0.0,
@@ -111,8 +118,7 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
         )
         cost_of_debt = cost_of_debt_pct / 100.0
 
-    with col2:
-        # MUDANÇA: de slider para number_input
+    with col_input2:
         debt_ratio_pct = st.number_input(
             "Proporção de Dívida (D/V) (%)",
             min_value=0.0,
@@ -123,7 +129,6 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
         )
         debt_ratio = debt_ratio_pct / 100.0
         
-        # MUDANÇA: de slider para number_input e padrão para 34%
         tax_rate_pct = st.number_input(
             "Alíquota de Imposto (t) (%)",
             min_value=0.0,
