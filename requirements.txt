@@ -4,4 +4,4 @@ pandas
 openpyxl
 xlrd
 pyettj
-streamlit-clipboard
+st-copy-to-clipboard
