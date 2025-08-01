@@ -116,11 +116,11 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
     with col_input1:
         industry_list = sorted(df_betas['Industry Name'].unique())
         selected_industry = st.selectbox("Selecione o Setor:",industry_list)
-        debt_ratio_pct = st.number_input("Proporção de Dívida (D/V) (%)", min_value=0.0, max_value=100.0, value=30.0, step=1.0, format="%.1f")
+        debt_ratio_pct = st.number_input("Proporção de Dívida (D/V) (%)", min_value=0.0, max_value=100.0, value=0.0, step=1.0, format="%.1f")
         debt_ratio = debt_ratio_pct / 100.0
         
     with col_input2:
-        cost_of_debt_pct = st.number_input("Custo da Dívida (Kd) (%)", min_value=0.0, value=8.80, step=0.10, format="%.2f")
+        cost_of_debt_pct = st.number_input("Custo da Dívida (Kd) (%)", min_value=0.0, value=0.0, step=0.10, format="%.2f")
         cost_of_debt = cost_of_debt_pct / 100.0
         tax_rate_pct = st.number_input("Alíquota de Imposto (t) (%)", min_value=0.0, max_value=100.0, value=34.0, step=1.0, format="%.1f")
         tax_rate = tax_rate_pct / 100.0
