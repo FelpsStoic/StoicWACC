@@ -201,7 +201,7 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
         st.latex(r'''K_e = R_f + (\beta \times ERP) + \text{Prêmio de Tamanho}''')
         st.latex(f"K_e = {rf_rate:.2%} + ({beta:.4f} \\times {erp_brazil:.2%}) + {size_premium:.2%} = \\textbf{{{cost_of_equity:.2%}}}".replace('.',','))
         st.subheader("Cálculo do WACC")
-        st.latex(r'''\text{WACC} = \left( \frac{E}{V} \times R_e \right) + \left( \frac{D}{V} \times R_d \times (1 - t) \right)''')
+        st.latex(r'''\text{WACC} = \left( \frac{E}{V} \times K_e \right) + \left( \frac{D}{V} \times R_d \times (1 - t) \right)''')
         st.latex(f"\\text{{WACC}} = ({equity_ratio:.0%} \\times {cost_of_equity:.2%}) + ({debt_ratio:.0%} \\times {cost_of_debt:.2%} \\times (1 - {tax_rate:.0%})) = \\textbf{{{wacc:.2%}}}".replace('.',','))
 
 else:
