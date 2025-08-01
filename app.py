@@ -102,6 +102,9 @@ with col1:
 with col2:
     st.title("Calculadora de WACC")
     st.markdown("Ferramenta para calcular o Custo Médio Ponderado de Capital (WACC).")
+    st.markdown("1. Selecione o Setor que a empresa está inserida"
+                "2. Digite o Custo da Dívida, e a Proporação da Dívida no capital total"
+                "3. Adicione o Prêmio de Tamanho")
 st.markdown("---")
 
 
