@@ -1,11 +1,11 @@
-# app.py - Versão Final com Formatação de Vírgula e Botão de Copiar
+# app.py - Versão Final com a biblioteca st-copy-to-clipboard
 
 import streamlit as st
 import pandas as pd
 import warnings
 from datetime import date, datetime
 from urllib.error import URLError
-import streamlit_clipboard as stc # NOVA IMPORTAÇÃO para o botão de copiar
+from st_copy_to_clipboard import st_copy_to_clipboard # NOVA IMPORTAÇÃO para o botão de copiar
 
 # Ignorar avisos que podem poluir a saída
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -93,7 +93,6 @@ with st.spinner('Carregando dados de mercado... Por favor, aguarde.'):
     rf_rate, rf_info_str, data_base_rf = get_risk_free_rate()
 
 # --- TÍTULO E DESCRIÇÃO COM LOGO ---
-# ... (código do título e logo permanece o mesmo) ...
 col1, col2 = st.columns([1, 4])
 with col1:
     try:
@@ -110,7 +109,6 @@ st.markdown("---")
 if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
     
     # --- SEÇÃO DE INPUTS ---
-    # ... (código dos inputs permanece o mesmo) ...
     st.subheader("1. Insira os Parâmetros da Empresa")
     
     col_input1, col_input2, col_input3 = st.columns(3)
@@ -147,9 +145,8 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
     res_col2.metric("Custo da Dívida (após impostos)", f"{cost_of_debt * (1 - tax_rate):.2%}".replace('.',','))
     res_col3.metric("WACC", f"{wacc:.2%}".replace('.',','))
     
-    # --- TABELA PARA COPIAR COM FORMATAÇÃO E BOTÃO ---
+    # --- TABELA PARA COPIAR ---
     with st.expander("📋 Tabela para Copiar e Colar (Excel, Google Sheets)"):
-        # MUDANÇA: Formatação dos números para usar vírgula como separador decimal
         summary_data = {
             "Métrica": [
                 "Data do Cálculo", "Data Base (Dados de Mercado)", "Taxa Livre de Risco (Rf)",
@@ -190,15 +187,12 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
         summary_df = pd.DataFrame(summary_data)
         st.dataframe(summary_df, hide_index=True, use_container_width=True)
         
-        # NOVO: Botão para copiar a tabela
-        # Converte o DataFrame para um formato CSV com tabulação (bom para colar no Excel)
+        # BOTÃO ATUALIZADO usando st-copy-to-clipboard
         tabela_para_copiar = summary_df.to_csv(sep='\t', index=False)
-        stc.copy_button(label="Copiar Tabela para a Área de Transferência", text=tabela_para_copiar)
-
+        st_copy_to_clipboard(tabela_para_copiar, "Copiar Tabela para a Área de Transferência")
 
     # --- DETALHAMENTO DAS FÓRMULAS ---
     with st.expander("🔎 Detalhamento das Fórmulas"):
-        # ... (código do detalhamento das fórmulas permanece o mesmo) ...
         st.info(rf_info_str, icon="📄")
         st.subheader("Cálculo do Custo de Equity (Re)")
         st.latex(r'''R_e = R_f + (\beta \times ERP) + \text{Prêmio de Tamanho}''')
@@ -206,7 +200,6 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
         st.subheader("Cálculo do WACC")
         st.latex(r'''\text{WACC} = \left( \frac{E}{V} \times R_e \right) + \left( \frac{D}{V} \times R_d \times (1 - t) \right)''')
         st.latex(f"\\text{{WACC}} = ({equity_ratio:.0%} \\times {cost_of_equity:.2%}) + ({debt_ratio:.0%} \\times {cost_of_debt:.2%} \\times (1 - {tax_rate:.0%})) = \\textbf{{{wacc:.2%}}}".replace('.',','))
-
 
 else:
     st.warning("A aplicação não pode continuar pois um ou mais dados de mercado não foram carregados. Verifique as mensagens de erro acima.")
