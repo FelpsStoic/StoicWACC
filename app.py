@@ -152,7 +152,7 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
                 "Data do Cálculo", "Data Base (Dados de Mercado)", "Taxa Livre de Risco (Rf)",
                 "Prêmio de Risco de Mercado (ERP)", "Setor Selecionado", "Beta (β) do Setor",
                 "Prêmio de Tamanho", "Proporção de Equity (E/V)", "Proporção de Dívida (D/V)",
-                "Custo da Dívida (Kd)", "Alíquota de Imposto (t)", "CUSTO DE EQUITY (Re)", "WACC"
+                "Custo da Dívida (Kd)", "Alíquota de Imposto (t)", "CUSTO DE EQUITY (Ke)", "WACC"
             ],
             "Valor": [
                 date.today().strftime('%d/%m/%Y'),
@@ -195,8 +195,8 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
     with st.expander("🔎 Detalhamento das Fórmulas"):
         st.info(rf_info_str, icon="📄")
         st.subheader("Cálculo do Custo de Equity (Re)")
-        st.latex(r'''R_e = R_f + (\beta \times ERP) + \text{Prêmio de Tamanho}''')
-        st.latex(f"R_e = {rf_rate:.2%} + ({beta:.4f} \\times {erp_brazil:.2%}) + {size_premium:.2%} = \\textbf{{{cost_of_equity:.2%}}}".replace('.',','))
+        st.latex(r'''K_e = R_f + (\beta \times ERP) + \text{Prêmio de Tamanho}''')
+        st.latex(f"K_e = {rf_rate:.2%} + ({beta:.4f} \\times {erp_brazil:.2%}) + {size_premium:.2%} = \\textbf{{{cost_of_equity:.2%}}}".replace('.',','))
         st.subheader("Cálculo do WACC")
         st.latex(r'''\text{WACC} = \left( \frac{E}{V} \times R_e \right) + \left( \frac{D}{V} \times R_d \times (1 - t) \right)''')
         st.latex(f"\\text{{WACC}} = ({equity_ratio:.0%} \\times {cost_of_equity:.2%}) + ({debt_ratio:.0%} \\times {cost_of_debt:.2%} \\times (1 - {tax_rate:.0%})) = \\textbf{{{wacc:.2%}}}".replace('.',','))
