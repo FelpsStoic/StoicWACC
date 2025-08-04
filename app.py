@@ -155,7 +155,7 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
                 "Data do Cálculo", "Data Base (Dados de Mercado)", "Taxa Livre de Risco (Rf)",
                 "Prêmio de Risco de Mercado (ERP)", "Setor Selecionado", "Beta (β) do Setor",
                 "Prêmio de Tamanho", "Proporção de Equity (E/V)", "Proporção de Dívida (D/V)",
-                "Custo da Dívida (Kd)", "Alíquota de Imposto (t)", "CUSTO DE EQUITY (Ke)", "WACC"
+                "Custo da Dívida (Kd)", "Alíquota de Imposto (t)"
             ],
             "Valor": [
                 date.today().strftime('%d/%m/%Y'),
@@ -169,23 +169,8 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
                 f"{debt_ratio:.2%}".replace('.', ','),
                 f"{cost_of_debt:.2%}".replace('.', ','),
                 f"{tax_rate:.2%}".replace('.', ','),
-                f"{cost_of_equity:.2%}".replace('.', ','),
-                f"{wacc:.2%}".replace('.', ',')
-            ],
-            "Descrição": [
-                "Data em que a análise foi realizada.", "Data de referência para os dados de mercado (taxa livre de risco).",
-                "Taxa do Tesouro Prefixado com Juros Semestrais de maior vencimento. Fonte: Tesouro Transparente.",
-                "Prêmio adicional exigido por investidores no Brasil. Fonte: Damodaran Online.",
-                "Setor de atuação da empresa, selecionado pelo usuário para definir o Beta.",
-                "Risco sistemático do setor (não alavancado). Fonte: Damodaran Online.",
-                "Prêmio adicional pelo risco de empresas menores. Inserido pelo usuário.",
-                "Percentual de capital próprio na estrutura de capital. Calculado a partir da dívida.",
-                "Percentual de dívida na estrutura de capital. Inserido pelo usuário.",
-                "Custo da dívida da empresa antes do benefício fiscal. Inserido pelo usuário.",
-                "Alíquota de imposto para o benefício fiscal da dívida. Inserido pelo usuário.",
-                "Retorno exigido pelos acionistas. Calculado via modelo CAPM estendido.",
-                "Custo Médio Ponderado de Capital da empresa. Resultado final do cálculo."
             ]
+            
         }
         summary_df = pd.DataFrame(summary_data)
         st.dataframe(summary_df, hide_index=True, use_container_width=True)
