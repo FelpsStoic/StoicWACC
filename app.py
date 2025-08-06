@@ -135,7 +135,7 @@ if not df_betas.empty and erp_brazil is not None and rf_rate is not None:
 
     # --- CÁLCULOS ---
     equity_ratio = 1 - debt_ratio
-    beta = df_betas[df_betas['Industry Name'] == selected_industry]['Beta'].iloc[0]
+    beta = df_betas[df_betas['Industry Name'] == selected_industry]['Unlevered beta'].iloc[0]
     cost_of_equity = rf_rate + beta * erp_brazil + size_premium
     wacc = (equity_ratio * cost_of_equity) + (debt_ratio * cost_of_debt * (1 - tax_rate))
 
