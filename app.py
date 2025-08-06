@@ -27,7 +27,7 @@ def get_beta_data():
         df = pd.read_excel(url, sheet_name='Industry Averages', skiprows=9)
         df.columns = df.columns.str.strip()
         df.dropna(how='all', inplace=True)
-        df = df[['Industry Name', 'Unlevered Beta']].dropna(subset=['Industry Name'])
+        df = df[['Industry Name', 'Unlevered beta']].dropna(subset=['Industry Name'])
         return df
     except Exception as e:
         st.error(f"Erro ao carregar dados de Beta: {e}")
